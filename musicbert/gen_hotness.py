@@ -86,6 +86,7 @@ def new_writer(file_name, output_str_list):
 preprocess.writer = new_writer
 
 
+os.system('rm -rf {}'.format(raw_data_dir))
 os.system('mkdir -p {}'.format(raw_data_dir))
 file_list = [file_name for file_name in preprocess.data_zip.namelist(
 ) if file_name[-4:].lower() == '.mid' or file_name[-5:].lower() == '.midi']
@@ -93,11 +94,11 @@ file_list = [file_name for file_name in preprocess.data_zip.namelist(
 #    file_name) in labels]
 print("Started with {} file names".format(len(file_list)))
 file_list = list(set(file_list))
-file_list = file_list[:1000] 
+#file_list = file_list[:1000] 
 
 seen_msd_id = set() # many songs can be matched
-duped_ids = set() # midi file appears in two songs
 
+new_file_list = [] 
 for file_name in file_list:
     msd_id = file_name.split("/")[-2]#[:-4]
     with tables.open_file(msd_id_to_h5(msd_id)) as h5:
@@ -105,28 +106,18 @@ for file_name in file_list:
         hotness = h5.root.metadata.songs.cols.song_hotttnesss[0]
         if hotness != hotness: # check for nan 
             continue
-        if hotness > 0.7: 
-            label = "HOT"
+        if hotness > 0.5: 
+            label = "H"
         else:
-            label = "COLD"
+            label = "C"
 
         if msd_id in seen_msd_id:
             # only one midi per msd id, TODO use the best match
-            continue
-            #pass
-
-        if get_id(file_name) in duped_ids:
-            continue
-        
-        # same midi can be matched to two songs, do not wantt hose
-        if get_id(file_name) in labels:
-            labels.pop(get_id(file_name))
-            continue
-
+            #continue
+            pass
 
         labels[get_id(file_name)] = label
-        seen_msd_id.add(msd_id)
-        duped_ids.add(get_id(file_name))
+        new_file_list.append(file_name)
         #print("filename {} hotness {}".format(file_name, h5.root.metadata.songs.cols.song_hotttnesss[0]))
         #print(dir(h5.root.metadata.songs.cols))
         #print('"{}" by {} on "{}"'.format(
@@ -137,10 +128,10 @@ for file_name in file_list:
 
 # only keep the ones we didn't dedup and NaN ones 
 print("Created {} labels".format(len(labels)))
-file_list = [file_name for file_name in file_list if get_id(file_name) in labels]
+#file_list = [file_name for file_name in file_list if get_id(file_name) in labels]
+file_list = new_file_list
 print("File list now {}".format(len(file_list)))
 
-raise ValueError("DONE")
 
 random.shuffle(file_list)
 label_list = ['+'.join(labels[get_id(file_name)]) for file_name in file_list]
