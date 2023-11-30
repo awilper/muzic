@@ -37,8 +37,15 @@ pool_num = 24
 labels = dict()
 with open('midi_genre_map.json') as f:
     for s in json.load(f)[subset].items():
+        print("s {}".format(s))
+        print("s[0] {}".format(s[0]))
+        print("out: {}".format(tuple(
+            sorted(set(i.strip().replace(' ', '-') for i in s[1])))
+))
+        raise ValueError("Done")
         labels[s[0]] = tuple(
             sorted(set(i.strip().replace(' ', '-') for i in s[1])))
+print(labels.keys())
 
 
 def get_id(file_name):
@@ -97,8 +104,8 @@ for fold in range(n_folds):
                                 f_label.write(
                                     ' '.join(labels[get_id(file_name)]) + '\n')
                                 f_id.write(get_id(file_name) + '\n')
-                                print("Sample Text Data:", output_str_list[i])
+                                #print("Sample Text Data:", output_str_list[i])
                                 print("Sample Label:", ' '.join(labels[get_id(file_name)]))
-                                print("Sample ID:", get_id(file_name))
+                                #print("Sample ID:", get_id(file_name))
                                 count += 1
                     print(fold, cur_split, count)

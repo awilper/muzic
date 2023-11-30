@@ -21,7 +21,7 @@ if os.path.exists(raw_data_dir):
     #sys.exit(0)
 
 #data_path = input('LMD dataset zip path: ')
-data_path = "lmd_matched.zip"
+data_path = "lmd_aligned.zip"
 n_folds = 5
 n_times = 4  # sample train set multiple times
 #max_length = int(input('sequence length: '))
@@ -91,29 +91,54 @@ file_list = [file_name for file_name in preprocess.data_zip.namelist(
 ) if file_name[-4:].lower() == '.mid' or file_name[-5:].lower() == '.midi']
 #file_list = [file_name for file_name in file_list if get_id(
 #    file_name) in labels]
-file_list = file_list[:100] # TODO just testing
+print("Started with {} file names".format(len(file_list)))
+file_list = list(set(file_list))
+file_list = file_list[:1000] 
+
+seen_msd_id = set() # many songs can be matched
+duped_ids = set() # midi file appears in two songs
+
 for file_name in file_list:
-    #print(file_name)
     msd_id = file_name.split("/")[-2]#[:-4]
-    #print(msd_id)
-    #h5 = file_name.replace("mid", "h5")
-    #h5 = h5.replace("lmd_matched", "lmd_matched_h5")
-    #print(file_name)
-    #print(get_id(file_name))
-    #h5 = h5.replace(file_name, get_id(file_name))
-    #print(file_name)
-    #msd_id = get_id(file_name)
-    #print('ID: {}'.format(msd_id))
-    #print('ID: {}'.format(msd_id_to_h5(msd_id)))
-    print(msd_id_to_dirs(msd_id))
     with tables.open_file(msd_id_to_h5(msd_id)) as h5:
-        print("filename {} hotness {}".format(file_name, h5.root.metadata.songs.cols.song_hotttnesss[0]))
+        # for now just grab the first one that's matched
+        hotness = h5.root.metadata.songs.cols.song_hotttnesss[0]
+        if hotness != hotness: # check for nan 
+            continue
+        if hotness > 0.7: 
+            label = "HOT"
+        else:
+            label = "COLD"
+
+        if msd_id in seen_msd_id:
+            # only one midi per msd id, TODO use the best match
+            continue
+            #pass
+
+        if get_id(file_name) in duped_ids:
+            continue
+        
+        # same midi can be matched to two songs, do not wantt hose
+        if get_id(file_name) in labels:
+            labels.pop(get_id(file_name))
+            continue
+
+
+        labels[get_id(file_name)] = label
+        seen_msd_id.add(msd_id)
+        duped_ids.add(get_id(file_name))
+        #print("filename {} hotness {}".format(file_name, h5.root.metadata.songs.cols.song_hotttnesss[0]))
         #print(dir(h5.root.metadata.songs.cols))
-        print('"{}" by {} on "{}"'.format(
-            h5.root.metadata.songs.cols.title[0],
-            h5.root.metadata.songs.cols.artist_name[0],
-            h5.root.metadata.songs.cols.release[0]))
-        print("\n\n")
+        #print('"{}" by {} on "{}"'.format(
+        #    h5.root.metadata.songs.cols.title[0],
+        #    h5.root.metadata.songs.cols.artist_name[0],
+        #    h5.root.metadata.songs.cols.release[0]))
+        #print("\n\n")
+
+# only keep the ones we didn't dedup and NaN ones 
+print("Created {} labels".format(len(labels)))
+file_list = [file_name for file_name in file_list if get_id(file_name) in labels]
+print("File list now {}".format(len(file_list)))
 
 raise ValueError("DONE")
 
@@ -145,8 +170,5 @@ for fold in range(n_folds):
                                 f_label.write(
                                     ' '.join(labels[get_id(file_name)]) + '\n')
                                 f_id.write(get_id(file_name) + '\n')
-                                print("Sample Text Data:", output_str_list[i])
-                                print("Sample Label:", ' '.join(labels[get_id(file_name)]))
-                                print("Sample ID:", get_id(file_name))
                                 count += 1
                     print(fold, cur_split, count)
