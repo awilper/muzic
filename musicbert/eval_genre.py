@@ -38,7 +38,8 @@ for i in range(n_folds):
         data_name_or_path=sys.argv[2].replace('x', str(i)),
         user_dir='musicbert'
     )
-    num_classes = 13 if 'topmagd' in sys.argv[1] else 25
+    #num_classes = 13 if 'topmagd' in sys.argv[1] else 25
+    num_classes = 2
     roberta.task.load_dataset('valid')
     dataset = roberta.task.datasets['valid']
     label_dict = roberta.task.label_dictionary
@@ -66,7 +67,7 @@ for i in range(n_folds):
             i, i + batch_size) if j < len(dataset)))
         source = torch.from_numpy(source)
         output = torch.sigmoid(roberta.predict(
-            'topmagd_head' if 'topmagd' in sys.argv[1] else 'masd_head', source, True))
+            'topmagd_head' if 'topmagd' in sys.argv[1] else 'hotness_head', source, True))
         y_true.append(target.detach().cpu().numpy())
         y_pred.append(output.detach().cpu().numpy())
         print('evaluating: {:.2f}%'.format(
