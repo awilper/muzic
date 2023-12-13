@@ -8,9 +8,53 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 import sklearn.metrics
+import tables
 import sys
 import os
 
+# label.id file only contains song ids and we need the msd ids.. since we didn't save those just backwards engineering now
+# recall one msd maps to several midi ids 
+
+
+def get_midi_id_to_msd_id():
+    def get_id(file_name):
+        return file_name.split('/')[-1].split('.')[0]
+
+    def get_file_paths(directory):
+        file_paths = []  # List to store full paths of files
+        for root, dirs, files in os.walk(directory):
+            for file in files:
+                file_path = os.path.join(root, file)
+                file_paths.append(file_path)
+        return file_paths
+
+    # Replace 'lmd_matched_h5' with the correct path to your folder
+    directory = 'lmd_aligned'
+    all_file_paths = get_file_paths(directory)
+    print(len(all_file_paths))
+
+    # Printing all file paths
+    midi_id_to_msd_id = {}
+    for path in all_file_paths:
+        midi_id = get_id(path)
+        msd_id = path.split("/")[-2]
+        midi_id_to_msd_id[midi_id] = path.split("/")[0]
+    return midi_id_to_msd_id
+
+midi_id_to_msd_id = get_midi_id_to_msd_id()
+
+
+RESULTS_PATH = ""
+
+def msd_id_to_dirs(msd_id):
+    """Given an MSD ID, generate the path prefix.
+    E.g. TRABCD12345678 -> A/B/C/TRABCD12345678"""
+    return os.path.join(msd_id[2], msd_id[3], msd_id[4], msd_id)
+
+def msd_id_to_h5(msd_id):
+    """Given an MSD ID, return the path to the corresponding h5"""
+    return os.path.join(RESULTS_PATH, 'lmd_matched_h5',
+                        msd_id_to_dirs(msd_id) + '.h5')
 
 max_length = 8192 if 'disable_cp' not in os.environ else 1024
 batch_size = 4
@@ -20,6 +64,7 @@ scores = dict()
 for score in ["f1_score", "roc_auc_score"]:
     for average in ["macro", "micro", "weighted", "samples"]:
         scores[score + "_" + average] = []
+        
 
 
 def label_fn(label, label_dict):
@@ -33,18 +78,32 @@ for i in range(n_folds):
     file_base = sys.argv[2].replace("x", str(i)) + "/"
     file_path = file_base + "test.id"  # this needs to be manually copied over
 
-    labels_vector = []
+    msd_vec = []
+    hotness_vec = []
 
     with open(file_path, 'r') as file:
         for line in file:
             # Strip whitespace and add to the list
-            labels_vector.append(line.strip())
+            midi_id = line.strip()
+            msd_id = midi_id_to_msd_id[midi_id]
+            msd_vec.append(msd_id)
+            print("midi id {} msd id {}".format(midi_id, msd_id))
 
-    genre_map_file = file_base + "midi_genre_map.json"
-    genre_map = json.load(open(genre_map_file, "r"))
-    genre_map_topmagd = genre_map
+    print(msd_vec[0])
+    #genre_map_file = file_base + "midi_genre_map.json"
+    #genre_map = json.load(open(genre_map_file, "r"))
+    #genre_map_topmagd = genre_map
+    print("starting to fetch hotness")
+    for msd_id in msd_vec:
+        print(msd_id)
+        with tables.open_file(msd_id_to_h5(msd_id)) as h5:
+            # for now just grab the first one that's matched
+            hotness = h5.root.metadata.songs.cols.song_hotttnesss[0]
+            print(dir(h5.root.metadata.songs.cols))
+            hotness_vec.append(hotness)
+    print("done fetching hotness")
     #print(len(genre_map["topmagd"]))
-    #print(labels_vector)
+    #print(msd_vec)
     print('loading model and data')
     print('start evaluating fold {}'.format(i))
 
@@ -86,13 +145,23 @@ for i in range(n_folds):
         output = torch.sigmoid(roberta.predict(
             'topmagd_head' if 'topmagd' in sys.argv[1] else 'hotness_head', source, True))
         y_true.append(target.detach().cpu().numpy())
-        y_pred.append(output.detach().cpu().numpy())
+        y_pred.append(np.round(output.detach().cpu().numpy()))
+
+        #print("ID {} y_true {} y_pred {}".format(msd_vec[i], y_true[i], y_pred[i]))
         print('evaluating: {:.2f}%'.format(
             i / len(dataset) * 100), end='\r', flush=True)
 
     y_true = np.vstack(y_true)
     y_pred = np.vstack(y_pred)
 
+
+
+    print(hotness[50:70])
+    print(y_true[50:70])
+    output_data = {"y_true": y_true, "y_pred": y_pred, "msd": msd_vec, "hotness": hotness}
+    json.dump(open("metrics.json", "w"))
+
+    print("y_true {} y_pred {} labels {}".format(y_true, y_pred, msd_vec))
     print()
 
     for i in range(num_classes):
