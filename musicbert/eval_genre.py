@@ -3,6 +3,7 @@
 #
 
 from fairseq.models.roberta import RobertaModel
+import json
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -27,8 +28,23 @@ def label_fn(label, label_dict):
     )
 
 
+# NOTE ONLY LOOKING AT FOLD1
 for i in range(n_folds):
+    file_base = sys.argv[2].replace("x", str(i)) + "/"
+    file_path = file_base + "test.id"  # this needs to be manually copied over
 
+    labels_vector = []
+
+    with open(file_path, 'r') as file:
+        for line in file:
+            # Strip whitespace and add to the list
+            labels_vector.append(line.strip())
+
+    genre_map_file = file_base + "midi_genre_map.json"
+    genre_map = json.load(open(genre_map_file, "r"))
+    genre_map_topmagd = genre_map
+    #print(len(genre_map["topmagd"]))
+    #print(labels_vector)
     print('loading model and data')
     print('start evaluating fold {}'.format(i))
 
@@ -56,7 +72,8 @@ for i in range(n_folds):
         pad_length = max_length - seq.shape[0]
         assert pad_length >= 0
         return np.concatenate((seq, np.full((pad_length,), pad_index, dtype=seq.dtype)))
-
+    
+    print(len(dataset))
     for i in range(0, len(dataset), batch_size):
         target = np.vstack(tuple(padded(dataset[j]['target'].numpy()) for j in range(
             i, i + batch_size) if j < len(dataset)))
