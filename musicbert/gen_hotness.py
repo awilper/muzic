@@ -22,8 +22,8 @@ if os.path.exists(raw_data_dir):
 
 #data_path = input('LMD dataset zip path: ')
 data_path = "lmd_aligned.zip"
-n_folds = 5
-n_times = 4  # sample train set multiple times
+n_folds = 3
+n_times = 2  # sample train set multiple times
 #max_length = int(input('sequence length: '))
 max_length = 1000
 preprocess.sample_len_max = max_length
@@ -160,6 +160,6 @@ for fold in range(n_folds):
                                 f_txt.write(output_str_list[i] + '\n')
                                 f_label.write(
                                     ' '.join(labels[get_id(file_name)]) + '\n')
-                                f_id.write(get_id(file_name) + '\n')
+                                f_id.write(get_id(file_name) + "," + file_name + '\n')
                                 count += 1
                     print(fold, cur_split, count)
