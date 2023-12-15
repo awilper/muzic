@@ -17,7 +17,6 @@ import os
 # recall one msd maps to several midi ids 
 
 
-"""
 def get_midi_id_to_msd_id():
     # each midi can map to more than one msd... but we can backwards engineer which one via the hotness scores
     def get_id(file_name):
@@ -45,7 +44,6 @@ def get_midi_id_to_msd_id():
     return midi_id_to_msd_id
 
 midi_id_to_msd_id = get_midi_id_to_msd_id()
-"""
 
 
 RESULTS_PATH = ""
@@ -86,16 +84,12 @@ for i in range(n_folds):
     midi_id_vec = []
     hotness_vec = []
     title_vec = []
-    latitude_vec = []
-    longitude_vec = []
 
     with open(file_path, 'r') as file:
         for line in file:
             # Strip whitespace and add to the list
-            (midi_id, msd_id) = line.strip().split(",")
-            msd_id = msd_id.split("/")[-2]
-            print("midi id {} msd id {}".format(midi_id, msd_id))
-            #msd_id = midi_id_to_msd_id[midi_id]
+            midi_id = line.strip()
+            msd_id = midi_id_to_msd_id[midi_id]
             msd_id_vec.append(msd_id)
             midi_id_vec.append(midi_id)
 
@@ -110,12 +104,6 @@ for i in range(n_folds):
             hotness_vec.append(hotness)
             title = str(h5.root.metadata.songs.cols.title[0])
             title_vec.append(title)
-            latitude = h5.root.metadata.songs.cols.artist_latitude[0]
-            longitude = h5.root.metadata.songs.cols.artist_latitude[0]
-            latitude = 0 if np.isnan(latitude) else latitude
-            longitude = 0 if np.isnan(longitude) else longitude 
-            latitude_vec.append(latitude)
-            longitude_vec.append(longitude)
     print("done fetching hotness")
     #print(len(genre_map["topmagd"]))
     #print(msd_vec)
@@ -171,14 +159,11 @@ for i in range(n_folds):
 
     y_true = ['H' if int(pair[0]) == 0 else 'C' for pair in y_true]
     y_pred = ['H' if int(pair[0]) == 0 else 'C' for pair in y_pred]
-    #hotness_vec = [hotness if not np.isnan(hotness) else 0 for hotness in hotness_vec]
-    for hotness in hotness_vec:
-        if np.isnan(hotness):
-            raise ValueError("Could not occur")
+    hotness_vec = [hotness if not np.isnan(hotness) else 0 for hotness in hotness_vec]
 
     for i in range(20):
         print("hotness {} y true {} y pred {} msd id {} midi id {}".format(hotness_vec[i], y_true[i], y_pred[i], msd_id_vec[i], midi_id_vec[i]))
-    output_data = {"y_true": y_true, "y_pred": y_pred,  "hotness": hotness_vec, "title": title_vec, "msd_id": msd_id_vec, "midi_id": midi_id_vec, "latitude_vec": latitude_vec, "longitude_vec": longitude_vec}
+    output_data = {"y_true": y_true, "y_pred": y_pred,  "hotness": hotness_vec, "title": title_vec, "msd_id": msd_id_vec, "midi_id": midi_id_vec}
     json.dump(output_data, open("metrics.json", "w"))
 
     for i in range(num_classes):

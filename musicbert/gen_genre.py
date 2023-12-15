@@ -12,19 +12,15 @@ import json
 from sklearn.model_selection import StratifiedKFold
 
 
-#subset = input('subset: ')
-subset = "topmagd"
+subset = input('subset: ')
 raw_data_dir = subset + '_data_raw'
 if os.path.exists(raw_data_dir):
     print('Output path {} already exists!'.format(raw_data_dir))
-    #sys.exit(0)
-
-#data_path = input('LMD dataset zip path: ')
-data_path = "lmd_aligned.zip"
+    sys.exit(0)
+data_path = input('LMD dataset zip path: ')
 n_folds = 5
 n_times = 4  # sample train set multiple times
-#max_length = int(input('sequence length: '))
-max_length = 1000
+max_length = int(input('sequence length: '))
 preprocess.sample_len_max = max_length
 preprocess.deduplicate = False
 preprocess.data_zip = zipfile.ZipFile(data_path)
@@ -33,19 +29,11 @@ manager = Manager()
 all_data = manager.list()
 pool_num = 24
 
-# TODO this is what we'll replace with the hotness score
 labels = dict()
 with open('midi_genre_map.json') as f:
     for s in json.load(f)[subset].items():
-        print("s {}".format(s))
-        print("s[0] {}".format(s[0]))
-        print("out: {}".format(tuple(
-            sorted(set(i.strip().replace(' ', '-') for i in s[1])))
-))
-        raise ValueError("Done")
         labels[s[0]] = tuple(
             sorted(set(i.strip().replace(' ', '-') for i in s[1])))
-print(labels.keys())
 
 
 def get_id(file_name):
@@ -75,7 +63,6 @@ file_list = [file_name for file_name in preprocess.data_zip.namelist(
 ) if file_name[-4:].lower() == '.mid' or file_name[-5:].lower() == '.midi']
 file_list = [file_name for file_name in file_list if get_id(
     file_name) in labels]
-file_list = file_list[:100] # TODO just testing
 random.shuffle(file_list)
 label_list = ['+'.join(labels[get_id(file_name)]) for file_name in file_list]
 fold_index = 0
@@ -104,8 +91,5 @@ for fold in range(n_folds):
                                 f_label.write(
                                     ' '.join(labels[get_id(file_name)]) + '\n')
                                 f_id.write(get_id(file_name) + '\n')
-                                #print("Sample Text Data:", output_str_list[i])
-                                print("Sample Label:", ' '.join(labels[get_id(file_name)]))
-                                #print("Sample ID:", get_id(file_name))
                                 count += 1
                     print(fold, cur_split, count)
