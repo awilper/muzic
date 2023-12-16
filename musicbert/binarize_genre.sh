@@ -4,7 +4,7 @@
 [[ -z "$1" ]] && { echo "PREFIX is empty" ; exit 1; }
 PREFIX=$1
 [[ -d "${PREFIX}_data_bin" ]] && { echo "output directory ${PREFIX}_data_bin already exists" ; exit 1; }
-for i in {0..4}
+for i in {0..2}
 do
 	echo "Processing fold $i"
 	mkdir -p ${PREFIX}_data_bin/$i
