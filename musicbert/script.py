@@ -1,0 +1,5 @@
+#f = open("hotness_data_bin/0/label/train.label")
+f = open("label_backups/train0_backup.label")
+str = f.read().split("\n")
+print(len(str))
+f.close()
